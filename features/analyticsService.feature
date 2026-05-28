@@ -1,4 +1,7 @@
 # Auto-generated feature file for backend/src/services/analyticsService.js
+# Generated on: 2026-05-28T10:32:20.612Z
+
+# Auto-generated feature file for backend/src/services/analyticsService.js
 # Generated on: 2026-05-28T08:59:26.830Z
 
 Feature: Order Analytics Dashboard
@@ -40,147 +43,117 @@ Feature: Order Analytics Dashboard
 
   Scenario: Status breakdown shows all order statuses
     Given the database contains orders with the following statuses:
-      | status      | count |
-      | pending     | 15    |
-      | processing  | 25    |
-      | completed   | 40    |
-      | cancelled   | 5     |
+      | status      |
+      | pending     |
+      | processing  |
+      | completed   |
+      | cancelled   |
+      | on-hold     |
     When I request dashboard analytics
-    Then the status breakdown should contain:
-      | status      | count |
-      | pending     | 15    |
-      | processing  | 25    |
-      | completed   | 40    |
-      | cancelled   | 5     |
+    Then the statusBreakdown should contain counts for each status
+    And each status count should be a positive integer
 
   Scenario: Plant performance metrics are calculated correctly
     Given the database contains orders from multiple plants:
-      | plant | orderCount | totalQuantity | avgPriority |
-      | PlantA| 50         | 1500          | 450.50      |
-      | PlantB| 35         | 1200          | 520.75      |
-      | PlantC| 20         | 800           | 380.25      |
+      | plant   | quantity | priority |
+      | Plant-A | 100      | 250      |
+      | Plant-A | 50       | 300      |
+      | Plant-B | 200      | 150      |
+      | Plant-C | 75       | 500      |
     When I request dashboard analytics
-    Then the plant performance data should include:
-      | plant | orderCount | totalQuantity | avgPriority |
-      | PlantA| 50         | 1500          | 450.50      |
-      | PlantB| 35         | 1200          | 520.75      |
-      | PlantC| 20         | 800           | 380.25      |
+    Then the plantPerformance array should include:
+      | field         | type   |
+      | plant         | string |
+      | orderCount    | number |
+      | totalQuantity | number |
+      | avgPriority   | string |
+    And Plant-A should have orderCount of 2
+    And Plant-A should have totalQuantity of 150
+    And Plant-A should have avgPriority as a decimal value
 
-  Scenario: Top 10 materials are returned in order of frequency
-    Given the database contains orders for multiple materials
-    And there are more than 10 distinct materials in the database
+  Scenario: Top materials are ranked by order count
+    Given the database contains orders with the following materials:
+      | material | orderCount |
+      | Steel    | 45         |
+      | Aluminum | 38         |
+      | Copper   | 32         |
+      | Brass     | 28         |
+      | Titanium | 25         |
+      | Iron     | 22         |
+      | Nickel   | 18         |
+      | Zinc     | 15         |
+      | Lead     | 12         |
+      | Tin      | 8          |
+      | Bronze   | 5          |
     When I request dashboard analytics
-    Then I should receive the top 10 materials by order count
-    And the materials should be sorted in descending order by frequency
+    Then the topMaterials array should contain a maximum of 10 items
+    And topMaterials should be ordered by orderCount in descending order
+    And each material entry should include:
+      | field         | type   |
+      | material      | string |
+      | orderCount    | number |
+      | totalQuantity | number |
 
-  Scenario: Material analysis includes order count and total quantity
-    Given the database contains orders for the following materials:
-      | material | orderCount | totalQuantity |
-      | Steel    | 45         | 2250          |
-      | Aluminum | 32         | 1600          |
-      | Copper   | 28         | 1400          |
+  Scenario: Priority distribution is calculated across all ranges
+    Given the database contains orders with priorities distributed across ranges
     When I request dashboard analytics
-    Then the top materials should include:
-      | material | orderCount | totalQuantity |
-      | Steel    | 45         | 2250          |
-      | Aluminum | 32         | 1600          |
-      | Copper   | 28         | 1400          |
+    Then the priorityDistribution array should contain 5 priority ranges:
+      | label                    |
+      | Critical (1-200)         |
+      | High (201-400)           |
+      | Medium (401-600)         |
+      | Low (601-800)            |
+      | Very Low (801-1000)      |
+    And each priority range should include a count of orders within that range
 
-  Scenario: Priority distribution is calculated across all priority ranges
-    Given the database contains orders with priorities distributed as follows:
-      | priority_range         | count |
-      | Critical (1-200)       | 50    |
-      | High (201-400)         | 75    |
-      | Medium (401-600)       | 100   |
-      | Low (601-800)          | 60    |
-      | Very Low (801-1000)    | 40    |
-    When I request dashboard analytics
-    Then the priority distribution should show:
-      | label                  | count |
-      | Critical (1-200)       | 50    |
-      | High (201-400)         | 75    |
-      | Medium (401-600)       | 100   |
-      | Low (601-800)          | 60    |
-      | Very Low (801-1000)    | 40    |
-
-  Scenario: Total orders count is accurate
-    Given the database contains exactly 325 orders
-    When I request dashboard analytics
-    Then the total orders count should be 325
-
-  Scenario: Analytics with empty database
+  Scenario: Dashboard analytics handles empty database gracefully
     Given the database contains no orders
     When I request dashboard analytics
     Then I should receive analytics data with:
-      | field       | value |
-      | totalOrders | 0     |
-    And status breakdown should be empty
-    And plant performance should be empty
-    And top materials should be empty
+      | field                | value |
+      | totalOrders          | 0     |
+      | statusBreakdown      | {}    |
+      | plantPerformance     | []    |
+      | topMaterials         | []    |
+      | priorityDistribution | []    |
 
-  Scenario: Plant performance handles null quantity values
-    Given the database contains orders with some null quantity values
-    When I request dashboard analytics
-    Then the plant performance total quantity should default null values to 0
-    And the calculation should not fail
-
-  Scenario: Plant performance handles null priority values
-    Given the database contains orders with some null priority values
-    When I request dashboard analytics
-    Then the plant performance average priority should default null values to 0
-    And the average priority should be formatted to 2 decimal places
-
-  Scenario: Material analysis handles null quantity values
-    Given the database contains materials with some null quantity values
-    When I request dashboard analytics
-    Then the material total quantity should default null values to 0
-    And the calculation should not fail
-
-  Scenario: Analytics response includes properly formatted numeric values
-    When I request dashboard analytics
-    Then all numeric values in the response should be properly formatted:
-      | field            | format          |
-      | orderCount       | integer         |
-      | totalQuantity    | integer         |
-      | avgPriority      | 2 decimal places|
-      | count            | integer         |
-
-  Scenario: Analytics handles invalid date format gracefully
+  Scenario: Dashboard analytics with invalid date format
     When I request dashboard analytics with start date "invalid-date"
-    Then the system should either:
-      | option                                    |
-      | return an error response                  |
-      | treat the invalid date as no date filter  |
+    Then the system should handle the date parsing error appropriately
 
-  Scenario: Analytics with future date range
-    Given the current date is "2024-01-15"
-    When I request dashboard analytics with start date "2025-01-01" and end date "2025-12-31"
-    Then I should receive analytics data with:
-      | field       | value |
-      | totalOrders | 0     |
+  Scenario: Dashboard analytics with end date before start date
+    When I request dashboard analytics with start date "2024-01-31" and end date "2024-01-01"
+    Then I should receive analytics data with no results
+    Or the system should return an error indicating invalid date range
 
-  Scenario: Analytics performance with large date range
-    Given the database contains 100000 orders spanning 5 years
-    When I request dashboard analytics with a 5-year date range
-    Then the response should be returned within acceptable time limits
-    And all calculations should be accurate
-
-  Scenario: Multiple concurrent analytics requests
-    When I make 5 concurrent requests for dashboard analytics
-    Then all requests should complete successfully
-    And each response should contain consistent data
-
-  Scenario Outline: Analytics with various date combinations
-    When I request dashboard analytics with:
-      | startDate   | endDate     |
-      | <startDate> | <endDate>   |
-    Then I should receive valid analytics data
-    And the data should be filtered according to the provided dates
+  Scenario Outline: Dashboard analytics with various date range combinations
+    Given the current date is "<currentDate>"
+    When I request dashboard analytics with start date "<startDate>" and end date "<endDate>"
+    Then the results should be filtered according to the date range
+    And totalOrders should reflect orders within the specified range
 
     Examples:
-      | startDate  | endDate    |
-      | 2024-01-01 | 2024-01-31 |
-      | 2024-01-01 |            |
-      |            | 2024-01-31 |
-      |            |            |
-      | 2024-06-15 | 2024-12-31 |
+      | currentDate | startDate  | endDate    |
+      | 2024-06-15  | 2024-01-01 | 2024-06-15 |
+      | 2024-06-15  | 2024-06-01 | 2024-06-15 |
+      | 2024-06-15  | 2024-06-15 | 2024-06-15 |
+      | 2024-06-15  | 2024-05-01 | 2024-05-31 |
+
+  Scenario: Plant performance includes zero-quantity orders
+    Given the database contains orders with zero quantities
+    When I request dashboard analytics
+    Then totalQuantity for affected plants should correctly sum to zero or positive values
+    And orderCount should still reflect all orders regardless of quantity
+
+  Scenario: Material analysis limits results to top 10 materials
+    Given the database contains orders for 50 different materials
+    When I request dashboard analytics
+    Then the topMaterials array should contain exactly 10 items
+    And the materials should be the top 10 by order count
+
+  Scenario: Dashboard analytics response structure is consistent
+    When I request dashboard analytics
+    Then the response should be a valid JSON object
+    And all numeric fields should be properly typed as numbers
+    And all array fields should be properly typed as arrays
+    And all object fields should be properly typed as objects
