@@ -1,4 +1,7 @@
 # Auto-generated feature file for backend/src/app.js
+# Generated on: 2026-05-28T08:59:04.688Z
+
+# Auto-generated feature file for backend/src/app.js
 # Generated on: 2026-05-24T18:43:49.054Z
 
 Feature: Express Application Server Setup and Health Monitoring
@@ -9,6 +12,13 @@ Feature: Express Application Server Setup and Health Monitoring
   Background:
     Given the application environment variables are loaded
     And the server is configured with necessary middleware
+    And the following middleware are applied:
+      | Middleware      | Purpose                    |
+      | helmet          | Security headers           |
+      | cors            | Cross-origin requests      |
+      | morgan          | HTTP request logging       |
+      | express.json    | JSON body parsing          |
+      | urlencoded      | URL-encoded body parsing   |
 
   Scenario: Server starts successfully with database connection
     Given the database connection is available
@@ -33,60 +43,67 @@ Feature: Express Application Server Setup and Health Monitoring
 
   Scenario: Health check endpoint returns server status
     Given the server is running
-    When a client requests the health check endpoint
+    When a client requests the health check endpoint at GET /health
     Then the response status code should be 200
     And the response should contain success status as true
     And the response should contain the message "Server is running"
-    And the response should contain a valid timestamp
+    And the response should contain a valid ISO timestamp
 
   Scenario: Security headers are applied to all responses
     Given the server is running
     When a client makes any request to the server
-    Then the response should include security headers from Helmet middleware
-    And the response should protect against common web vulnerabilities
+    Then the response should include security headers from helmet middleware
 
   Scenario: CORS is enabled for cross-origin requests
     Given the server is running
-    When a client from a different origin makes a request
-    Then the request should be accepted
-    And the response should include appropriate CORS headers
+    When a client makes a cross-origin request
+    Then the response should include appropriate CORS headers
+    And the request should be processed successfully
 
   Scenario: HTTP requests are logged
     Given the server is running
-    When a client makes an HTTP request
-    Then the request should be logged with Morgan logger
-    And the log should include request method, path, and response status
+    When a client makes a request to any endpoint
+    Then the request should be logged by morgan in development format
 
   Scenario: JSON request bodies are parsed correctly
     Given the server is running
-    When a client sends a request with JSON content type
-    And the request body contains valid JSON data
+    When a client sends a POST request with JSON body
     Then the server should parse the JSON body correctly
-    And the parsed data should be available in the request object
+    And the request handler should receive the parsed data
 
   Scenario: URL-encoded request bodies are parsed correctly
     Given the server is running
-    When a client sends a request with URL-encoded content type
-    And the request body contains URL-encoded data
+    When a client sends a POST request with URL-encoded body
     Then the server should parse the URL-encoded body correctly
-    And the parsed data should be available in the request object
+    And the request handler should receive the parsed data
 
-  Scenario: 404 handler responds to undefined routes
+  Scenario: Order routes are properly mounted
     Given the server is running
-    When a client requests a route that does not exist
+    When a client requests any endpoint under /api/orders
+    Then the request should be routed to the order routes handler
+
+  Scenario: Analytics routes are properly mounted
+    Given the server is running
+    When a client requests any endpoint under /api/analytics
+    Then the request should be routed to the analytics routes handler
+
+  Scenario: 404 handler returns not found for undefined routes
+    Given the server is running
+    When a client requests an undefined endpoint
     Then the response status code should be 404
-    And the not found handler should be invoked
+    And the notFoundHandler middleware should be invoked
 
-  Scenario: Global error handler catches application errors
+  Scenario: Global error handler catches and processes errors
     Given the server is running
-    When an unhandled error occurs during request processing
+    And an error occurs during request processing
+    When the error is thrown in a route handler
     Then the global error handler should catch the error
-    And an appropriate error response should be returned to the client
+    And an appropriate error response should be returned
 
   Scenario: Unhandled promise rejections are caught
     Given the server is running
     When an unhandled promise rejection occurs
-    Then the process should log the error
+    Then the process should log the rejection error
     And the process should exit with error code 1
 
   Scenario: Server does not start in test mode
@@ -94,34 +111,12 @@ Feature: Express Application Server Setup and Health Monitoring
     When the application module is loaded
     Then the startServer function should not be automatically invoked
 
-  Scenario: Order routes are properly registered
-    Given the server is running
-    When a client makes a request to the orders API endpoint
-    Then the request should be routed to the order routes handler
-    And the order routes should be available at /api/orders
-
-  Scenario: Server uses configured port from environment
-    Given the PORT environment variable is set to a specific value
-    When the server starts
-    Then the server should listen on the configured port
-
-  Scenario: Server uses default port when environment variable is not set
+  Scenario: Server uses default port when PORT environment variable is not set
     Given the PORT environment variable is not set
     When the server starts
     Then the server should listen on port 3000
 
-  Scenario Outline: All order endpoints are available
-    Given the server is running
-    When a client requests the <method> <endpoint> endpoint
-    Then the endpoint should be routed to the order routes handler
-
-    Examples:
-      | method | endpoint                    |
-      | POST   | /api/orders                 |
-      | GET    | /api/orders                 |
-      | GET    | /api/orders/:orderId        |
-      | PUT    | /api/orders/:orderId        |
-      | DELETE | /api/orders/:orderId        |
-      | POST   | /api/orders/:orderId/release|
-      | GET    | /api/orders/status/:status  |
-      | GET    | /api/orders/search          |
+  Scenario: Server uses custom port from environment variable
+    Given the PORT environment variable is set to 5000
+    When the server starts
+    Then the server should listen on port 5000
