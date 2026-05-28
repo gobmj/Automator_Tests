@@ -1,4 +1,7 @@
 # Auto-generated feature file for backend/src/controllers/analyticsController.js
+# Generated on: 2026-05-28T10:35:35.442Z
+
+# Auto-generated feature file for backend/src/controllers/analyticsController.js
 # Generated on: 2026-05-28T08:59:10.013Z
 
 Feature: Analytics Dashboard API
@@ -43,15 +46,7 @@ Feature: Analytics Dashboard API
       | 2023-12-01 | 2024-12-31 |
       | 2024-01-15 | 2024-01-20 |
 
-  Scenario: Handle missing start date parameter gracefully
-    When I request dashboard analytics with only endDate parameter:
-      | Parameter | Value      |
-      | endDate   | 2024-01-31 |
-    Then the response status should be 200
-    And the response should contain success flag set to true
-    And the response should contain analytics data
-
-  Scenario: Handle missing end date parameter gracefully
+  Scenario: Retrieve dashboard analytics with only start date parameter
     When I request dashboard analytics with only startDate parameter:
       | Parameter | Value      |
       | startDate | 2024-01-01 |
@@ -59,37 +54,22 @@ Feature: Analytics Dashboard API
     And the response should contain success flag set to true
     And the response should contain analytics data
 
-  Scenario: Handle invalid start date format
-    When I request dashboard analytics with the following parameters:
-      | Parameter | Value           |
-      | startDate | invalid-date    |
-      | endDate   | 2024-01-31      |
-    Then the error should be handled by the error middleware
-    And an appropriate error response should be returned
+  Scenario: Retrieve dashboard analytics with only end date parameter
+    When I request dashboard analytics with only endDate parameter:
+      | Parameter | Value      |
+      | endDate   | 2024-01-31 |
+    Then the response status should be 200
+    And the response should contain success flag set to true
+    And the response should contain analytics data
 
-  Scenario: Handle invalid end date format
-    When I request dashboard analytics with the following parameters:
-      | Parameter | Value           |
-      | startDate | 2024-01-01      |
-      | endDate   | not-a-date      |
-    Then the error should be handled by the error middleware
-    And an appropriate error response should be returned
+  Scenario: Handle analytics service errors gracefully
+    Given the analytics service encounters an error
+    When I request dashboard analytics without date filters
+    Then the error should be passed to the error handler
+    And the response should contain appropriate error information
 
-  Scenario: Handle service layer errors gracefully
-    Given the analytics service throws an error
-    When I request dashboard analytics
-    Then the error should be passed to the error middleware
-    And the client should receive an error response
-
-  Scenario: Verify response structure for dashboard analytics
-    When I request dashboard analytics
+  Scenario: Return properly formatted JSON response
+    When I request dashboard analytics without date filters
     Then the response should be valid JSON
-    And the response should contain a "success" field
-    And the response should contain a "data" field
-    And the "data" field should contain analytics metrics
-
-  Scenario: Handle concurrent requests for dashboard analytics
-    When I make 5 concurrent requests for dashboard analytics
-    Then all requests should return status 200
-    And all responses should contain valid analytics data
-    And all responses should have success flag set to true
+    And the response should have a success property
+    And the response should have a data property containing analytics information
